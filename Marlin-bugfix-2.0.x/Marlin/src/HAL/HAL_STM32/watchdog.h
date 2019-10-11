@@ -22,4 +22,4 @@
 #pragma once
 
 void watchdog_init();
-void HAL_watchdog_refresh();
+void watchdog_reset();

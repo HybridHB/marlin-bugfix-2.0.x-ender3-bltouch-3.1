@@ -55,9 +55,12 @@ static int pending_char = -1;
 #endif
 
 // Public Methods
-void MarlinSerialUSB::begin(const long) {}
+void MarlinSerialUSB::begin(const long baud_setting) {
+  UNUSED(baud_setting);
+}
 
-void MarlinSerialUSB::end() {}
+void MarlinSerialUSB::end() {
+}
 
 int MarlinSerialUSB::peek() {
   if (pending_char >= 0)

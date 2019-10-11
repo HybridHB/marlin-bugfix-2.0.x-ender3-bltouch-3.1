@@ -31,7 +31,7 @@ screen_data_t screen_data;
 
 SCREEN_TABLE {
   DECL_SCREEN(BootScreen),
-  #if NUM_LANGUAGES > 1
+  #if ENABLED(TOUCH_UI_LANGUAGE_MENU)
     DECL_SCREEN(LanguageMenu),
   #endif
   DECL_SCREEN(TouchCalibrationScreen),
@@ -43,7 +43,6 @@ SCREEN_TABLE {
   DECL_SCREEN(ConfirmUserRequestAlertBox),
   DECL_SCREEN(RestoreFailsafeDialogBox),
   DECL_SCREEN(SaveSettingsDialogBox),
-  DECL_SCREEN(ConfirmStartPrintDialogBox),
   DECL_SCREEN(ConfirmAbortPrintDialogBox),
 #if ENABLED(CALIBRATION_GCODE)
   DECL_SCREEN(ConfirmAutoCalibrationDialogBox),
@@ -75,7 +74,7 @@ SCREEN_TABLE {
   DECL_SCREEN(MaxVelocityScreen),
   DECL_SCREEN(MaxAccelerationScreen),
   DECL_SCREEN(DefaultAccelerationScreen),
-#if DISABLED(CLASSIC_JERK)
+#if ENABLED(JUNCTION_DEVIATION)
   DECL_SCREEN(JunctionDeviationScreen),
 #else
   DECL_SCREEN(JerkScreen),

@@ -83,9 +83,9 @@ public:
 
   HalSerial() { host_connected = true; }
 
-  void begin(int32_t) {}
+  void begin(int32_t baud) { }
 
-  void end() {}
+  void end() { }
 
   int peek() {
     uint8_t value;

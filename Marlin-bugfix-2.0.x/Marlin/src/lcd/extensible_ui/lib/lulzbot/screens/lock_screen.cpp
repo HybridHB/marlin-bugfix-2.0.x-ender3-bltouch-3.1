@@ -45,7 +45,6 @@ void LockScreen::onRedraw(draw_mode_t what) {
   if (what & BACKGROUND) {
     cmd.cmd(CLEAR_COLOR_RGB(bg_color))
        .cmd(CLEAR(true,true,true))
-       .cmd(COLOR_RGB(bg_text_enabled))
        .tag(0);
   }
 
@@ -66,16 +65,16 @@ void LockScreen::onRedraw(draw_mode_t what) {
     progmem_str message;
     switch (message_style()) {
       case 'w':
-        message = GET_TEXT_F(PASSCODE_REJECTED);
+        message = GET_TEXTF(PASSCODE_REJECTED);
         break;
       case 'g':
-        message = GET_TEXT_F(PASSCODE_ACCEPTED);
+        message = GET_TEXTF(PASSCODE_ACCEPTED);
         break;
       default:
         if (passcode == 0) {
-          message = GET_TEXT_F(PASSCODE_SELECT);
+          message = GET_TEXTF(PASSCODE_SELECT);
         } else {
-          message = GET_TEXT_F(PASSCODE_REQUEST);
+          message = GET_TEXTF(PASSCODE_REQUEST);
         }
     }
     message_style() = '\0'; // Terminate the string.
@@ -89,28 +88,29 @@ void LockScreen::onRedraw(draw_mode_t what) {
     const uint8_t pressed = EventLoop::get_pressed_tag();
 
     cmd.font(font_large)
-    #ifdef TOUCH_UI_PORTRAIT
+       .cmd(COLOR_RGB(bg_text_enabled))
+       #ifdef TOUCH_UI_PORTRAIT
        .text(BTN_POS(1,2), BTN_SIZE(1,1), message)
        .font(font_xlarge)
        .text(BTN_POS(1,4), BTN_SIZE(1,1), screen_data.LockScreen.passcode)
-    #else
+       #else
        .text(BTN_POS(1,1), BTN_SIZE(1,1), message)
        .font(font_xlarge)
        .text(BTN_POS(1,2), BTN_SIZE(1,1), screen_data.LockScreen.passcode)
-    #endif
+       #endif
        .font(font_large)
        .colors(normal_btn)
-    #ifdef TOUCH_UI_PASSCODE
+       #ifdef TOUCH_UI_PASSCODE
        .keys(BTN_POS(1,l+1), BTN_SIZE(1,1), F("123"),        pressed)
        .keys(BTN_POS(1,l+2), BTN_SIZE(1,1), F("456"),        pressed)
        .keys(BTN_POS(1,l+3), BTN_SIZE(1,1), F("789"),        pressed)
        .keys(BTN_POS(1,l+4), BTN_SIZE(1,1), F("0.<"),        pressed);
-    #else
+       #else
        .keys(BTN_POS(1,l+1), BTN_SIZE(1,1), F("1234567890"), pressed)
        .keys(BTN_POS(1,l+2), BTN_SIZE(1,1), F("qwertyuiop"), pressed)
        .keys(BTN_POS(1,l+3), BTN_SIZE(1,1), F("asdfghjkl "), pressed)
        .keys(BTN_POS(1,l+4), BTN_SIZE(1,1), F("zxcvbnm!?<"), pressed);
-    #endif
+       #endif
 
     #undef MARGIN_T
     #undef MARGIN_B

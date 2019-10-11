@@ -79,36 +79,40 @@ void safe_delay(millis_t ms) {
     );
 
     #if HAS_BED_PROBE
-      SERIAL_ECHOPAIR("Probe Offset X", probe_offset.x, " Y", probe_offset.y, " Z", probe_offset.z);
-      if (probe_offset.x > 0)
+      SERIAL_ECHOPAIR(
+        "Probe Offset X:" STRINGIFY(X_PROBE_OFFSET_FROM_EXTRUDER)
+                    " Y:" STRINGIFY(Y_PROBE_OFFSET_FROM_EXTRUDER)
+                    " Z:", zprobe_zoffset
+      );
+      if ((X_PROBE_OFFSET_FROM_EXTRUDER) > 0)
         SERIAL_ECHOPGM(" (Right");
-      else if (probe_offset.x < 0)
+      else if ((X_PROBE_OFFSET_FROM_EXTRUDER) < 0)
         SERIAL_ECHOPGM(" (Left");
-      else if (probe_offset.y != 0)
+      else if ((Y_PROBE_OFFSET_FROM_EXTRUDER) != 0)
         SERIAL_ECHOPGM(" (Middle");
       else
         SERIAL_ECHOPGM(" (Aligned With");
 
-      if (probe_offset.y > 0) {
+      if ((Y_PROBE_OFFSET_FROM_EXTRUDER) > 0) {
         #if IS_SCARA
           SERIAL_ECHOPGM("-Distal");
         #else
           SERIAL_ECHOPGM("-Back");
         #endif
       }
-      else if (probe_offset.y < 0) {
+      else if ((Y_PROBE_OFFSET_FROM_EXTRUDER) < 0) {
         #if IS_SCARA
           SERIAL_ECHOPGM("-Proximal");
         #else
           SERIAL_ECHOPGM("-Front");
         #endif
       }
-      else if (probe_offset.x != 0)
+      else if ((X_PROBE_OFFSET_FROM_EXTRUDER) != 0)
         SERIAL_ECHOPGM("-Center");
 
-      if (probe_offset.z < 0)
+      if (zprobe_zoffset < 0)
         SERIAL_ECHOPGM(" & Below");
-      else if (probe_offset.z > 0)
+      else if (zprobe_zoffset > 0)
         SERIAL_ECHOPGM(" & Above");
       else
         SERIAL_ECHOPGM(" & Same Z as");
@@ -134,18 +138,24 @@ void safe_delay(millis_t ms) {
             SERIAL_ECHOLNPAIR("Z Fade: ", planner.z_fade_height);
         #endif
         #if ABL_PLANAR
+          const float diff[XYZ] = {
+            planner.get_axis_position_mm(X_AXIS) - current_position[X_AXIS],
+            planner.get_axis_position_mm(Y_AXIS) - current_position[Y_AXIS],
+            planner.get_axis_position_mm(Z_AXIS) - current_position[Z_AXIS]
+          };
           SERIAL_ECHOPGM("ABL Adjustment X");
-          LOOP_XYZ(a) {
-            float v = planner.get_axis_position_mm(AxisEnum(a)) - current_position[a];
-            SERIAL_CHAR(' ');
-            SERIAL_CHAR('X' + char(a));
-            if (v > 0) SERIAL_CHAR('+');
-            SERIAL_ECHO(v);
-          }
+          if (diff[X_AXIS] > 0) SERIAL_CHAR('+');
+          SERIAL_ECHO(diff[X_AXIS]);
+          SERIAL_ECHOPGM(" Y");
+          if (diff[Y_AXIS] > 0) SERIAL_CHAR('+');
+          SERIAL_ECHO(diff[Y_AXIS]);
+          SERIAL_ECHOPGM(" Z");
+          if (diff[Z_AXIS] > 0) SERIAL_CHAR('+');
+          SERIAL_ECHO(diff[Z_AXIS]);
         #else
           #if ENABLED(AUTO_BED_LEVELING_UBL)
             SERIAL_ECHOPGM("UBL Adjustment Z");
-            const float rz = ubl.get_z_correction(current_position);
+            const float rz = ubl.get_z_correction(current_position[X_AXIS], current_position[Y_AXIS]);
           #elif ENABLED(AUTO_BED_LEVELING_BILINEAR)
             SERIAL_ECHOPGM("ABL Adjustment Z");
             const float rz = bilinear_z_offset(current_position);
@@ -153,7 +163,7 @@ void safe_delay(millis_t ms) {
           SERIAL_ECHO(ftostr43sign(rz, '+'));
           #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
             if (planner.z_fade_height) {
-              SERIAL_ECHOPAIR(" (", ftostr43sign(rz * planner.fade_scaling_factor_for_z(current_position.z), '+'));
+              SERIAL_ECHOPAIR(" (", ftostr43sign(rz * planner.fade_scaling_factor_for_z(current_position[Z_AXIS]), '+'));
               SERIAL_CHAR(')');
             }
           #endif
@@ -169,11 +179,15 @@ void safe_delay(millis_t ms) {
       SERIAL_ECHOPGM("Mesh Bed Leveling");
       if (planner.leveling_active) {
         SERIAL_ECHOLNPGM(" (enabled)");
-        SERIAL_ECHOPAIR("MBL Adjustment Z", ftostr43sign(mbl.get_z(current_position), '+'));
+        SERIAL_ECHOPAIR("MBL Adjustment Z", ftostr43sign(mbl.get_z(current_position[X_AXIS], current_position[Y_AXIS]
+          #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
+            , 1.0
+          #endif
+        ), '+'));
         #if ENABLED(ENABLE_LEVELING_FADE_HEIGHT)
           if (planner.z_fade_height) {
             SERIAL_ECHOPAIR(" (", ftostr43sign(
-              mbl.get_z(current_position, planner.fade_scaling_factor_for_z(current_position.z)), '+'
+              mbl.get_z(current_position[X_AXIS], current_position[Y_AXIS], planner.fade_scaling_factor_for_z(current_position[Z_AXIS])), '+'
             ));
             SERIAL_CHAR(')');
           }

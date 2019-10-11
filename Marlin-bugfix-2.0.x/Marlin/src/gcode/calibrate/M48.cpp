@@ -74,14 +74,13 @@ void GcodeSuite::M48() {
 
   const ProbePtRaise raise_after = parser.boolval('E') ? PROBE_PT_STOW : PROBE_PT_RAISE;
 
-  xy_float_t next_pos = current_position;
+  float X_current = current_position[X_AXIS],
+        Y_current = current_position[Y_AXIS];
 
-  const xy_pos_t probe_pos = {
-    parser.linearval('X', next_pos.x + probe_offset.x),
-    parser.linearval('Y', next_pos.y + probe_offset.y)
-  };
+  const float X_probe_location = parser.linearval('X', X_current + X_PROBE_OFFSET_FROM_EXTRUDER),
+              Y_probe_location = parser.linearval('Y', Y_current + Y_PROBE_OFFSET_FROM_EXTRUDER);
 
-  if (!position_is_reachable_by_probe(probe_pos)) {
+  if (!position_is_reachable_by_probe(X_probe_location, Y_probe_location)) {
     SERIAL_ECHOLNPGM("? (X,Y) out of bounds.");
     return;
   }
@@ -112,12 +111,12 @@ void GcodeSuite::M48() {
     set_bed_leveling_enabled(false);
   #endif
 
-  remember_feedrate_scaling_off();
+  setup_for_endstop_or_probe_move();
 
   float mean = 0.0, sigma = 0.0, min = 99999.9, max = -99999.9, sample_set[n_samples];
 
   // Move to the first point, deploy, and probe
-  const float t = probe_at_point(probe_pos, raise_after, verbose_level);
+  const float t = probe_at_point(X_probe_location, Y_probe_location, raise_after, verbose_level);
   bool probing_good = !isnan(t);
 
   if (probing_good) {
@@ -126,7 +125,7 @@ void GcodeSuite::M48() {
     for (uint8_t n = 0; n < n_samples; n++) {
       #if HAS_SPI_LCD
         // Display M48 progress in the status bar
-        ui.status_printf_P(0, PSTR(S_FMT ": %d/%d"), GET_TEXT(MSG_M48_POINT), int(n + 1), int(n_samples));
+        ui.status_printf_P(0, PSTR(MSG_M48_POINT ": %d/%d"), int(n + 1), int(n_samples));
       #endif
       if (n_legs) {
         const int dir = (random(0, 10) > 5.0) ? -1 : 1;  // clockwise or counter clockwise
@@ -166,31 +165,32 @@ void GcodeSuite::M48() {
           while (angle < 0.0) angle += 360.0;   // outside of this range.   It looks like they behave correctly with
                                                 // numbers outside of the range, but just to be safe we clamp them.
 
-          next_pos.set(probe_pos.x - probe_offset.x + cos(RADIANS(angle)) * radius,
-                       probe_pos.y - probe_offset.y + sin(RADIANS(angle)) * radius);
+          X_current = X_probe_location - (X_PROBE_OFFSET_FROM_EXTRUDER) + cos(RADIANS(angle)) * radius;
+          Y_current = Y_probe_location - (Y_PROBE_OFFSET_FROM_EXTRUDER) + sin(RADIANS(angle)) * radius;
 
           #if DISABLED(DELTA)
-            LIMIT(next_pos.x, X_MIN_POS, X_MAX_POS);
-            LIMIT(next_pos.y, Y_MIN_POS, Y_MAX_POS);
+            LIMIT(X_current, X_MIN_POS, X_MAX_POS);
+            LIMIT(Y_current, Y_MIN_POS, Y_MAX_POS);
           #else
             // If we have gone out too far, we can do a simple fix and scale the numbers
             // back in closer to the origin.
-            while (!position_is_reachable_by_probe(next_pos)) {
-              next_pos *= 0.8f;
+            while (!position_is_reachable_by_probe(X_current, Y_current)) {
+              X_current *= 0.8;
+              Y_current *= 0.8;
               if (verbose_level > 3)
-                SERIAL_ECHOLNPAIR("Moving inward: X", next_pos.x, " Y", next_pos.y);
+                SERIAL_ECHOLNPAIR("Moving inward: X", X_current, " Y", Y_current);
             }
           #endif
 
           if (verbose_level > 3)
-            SERIAL_ECHOLNPAIR("Going to: X", next_pos.x, " Y", next_pos.y);
+            SERIAL_ECHOLNPAIR("Going to: X", X_current, " Y", Y_current, " Z", current_position[Z_AXIS]);
 
-          do_blocking_move_to_xy(next_pos);
+          do_blocking_move_to_xy(X_current, Y_current);
         } // n_legs loop
       } // n_legs
 
       // Probe a single point
-      sample_set[n] = probe_at_point(probe_pos, raise_after, 0);
+      sample_set[n] = probe_at_point(X_probe_location, Y_probe_location, raise_after, 0);
 
       // Break the loop if the probe fails
       probing_good = !isnan(sample_set[n]);
@@ -252,11 +252,11 @@ void GcodeSuite::M48() {
     #if HAS_SPI_LCD
       // Display M48 results in the status bar
       char sigma_str[8];
-      ui.status_printf_P(0, PSTR(S_FMT ": %s"), GET_TEXT(MSG_M48_DEVIATION), dtostrf(sigma, 2, 6, sigma_str));
+      ui.status_printf_P(0, PSTR(MSG_M48_DEVIATION ": %s"), dtostrf(sigma, 2, 6, sigma_str));
     #endif
   }
 
-  restore_feedrate_and_scaling();
+  clean_up_after_endstop_or_probe_move();
 
   // Re-enable bed level correction if it had been on
   #if HAS_LEVELING

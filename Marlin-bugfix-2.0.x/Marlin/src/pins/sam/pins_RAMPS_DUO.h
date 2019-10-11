@@ -50,7 +50,7 @@
 #define BOARD_INFO_NAME "RAMPS Duo"
 
 #define IS_RAMPS_DUO
-#include "../ramps/pins_RAMPS.h"
+#include "pins_RAMPS.h"
 
 //
 // Temperature Sensors

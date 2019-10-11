@@ -35,7 +35,6 @@ union screen_data_t {
   struct {char passcode[5];}                   LockScreen;
   struct {bool isError;}                       AlertDialogBox;
   struct {bool auto_hide;}                     SpinnerDialogBox;
-  struct {uint8_t file_index;}                 ConfirmStartPrintDialogBox;
   struct {
     uint8_t e_tag, t_tag, repeat_tag;
     ExtUI::extruder_t saved_extruder;
@@ -66,7 +65,7 @@ union screen_data_t {
 #if ENABLED(BABYSTEPPING)
   struct {
     struct base_numeric_adjustment_t placeholder;
-    xyz_int_t rel;
+    int16_t rel[XYZ];
     #if EXTRUDERS > 1
       bool link_nozzles;
     #endif

@@ -32,25 +32,25 @@
 int Servo::channel_next_free = 12;
 
 Servo::Servo() {
-  channel = channel_next_free++;
+  this->channel = channel_next_free++;
 }
 
-int8_t Servo::attach(const int inPin) {
-  if (channel >= CHANNEL_MAX_NUM) return -1;
-  if (pin > 0) pin = inPin;
+int8_t Servo::attach(const int pin) {
+  if (this->channel >= CHANNEL_MAX_NUM) return -1;
+  if (pin > 0) this->pin = pin;
 
-  ledcSetup(channel, 50, 16); // channel X, 50 Hz, 16-bit depth
-  ledcAttachPin(pin, channel);
+  ledcSetup(this->channel, 50, 16); // channel X, 50 Hz, 16-bit depth
+  ledcAttachPin(this->pin, this->channel);
   return true;
 }
 
-void Servo::detach() { ledcDetachPin(pin); }
+void Servo::detach() { ledcDetachPin(this->pin); }
 
-int Servo::read() { return degrees; }
+int Servo::read() { return this->degrees; }
 
 void Servo::write(int inDegrees) {
-  degrees = constrain(inDegrees, MIN_ANGLE, MAX_ANGLE);
-  int us = map(degrees, MIN_ANGLE, MAX_ANGLE, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
+  this->degrees = constrain(inDegrees, MIN_ANGLE, MAX_ANGLE);
+  int us = map(this->degrees, MIN_ANGLE, MAX_ANGLE, MIN_PULSE_WIDTH, MAX_PULSE_WIDTH);
   int duty = map(us, 0, TAU_USEC, 0, MAX_COMPARE);
   ledcWrite(channel, duty);
 }
@@ -58,11 +58,11 @@ void Servo::write(int inDegrees) {
 void Servo::move(const int value) {
   constexpr uint16_t servo_delay[] = SERVO_DELAY;
   static_assert(COUNT(servo_delay) == NUM_SERVOS, "SERVO_DELAY must be an array NUM_SERVOS long.");
-  if (attach(0) >= 0) {
-    write(value);
-    safe_delay(servo_delay[channel]);
+  if (this->attach(0) >= 0) {
+    this->write(value);
+    safe_delay(servo_delay[this->channel]);
     #if ENABLED(DEACTIVATE_SERVOS_AFTER_MOVE)
-      detach();
+      this->detach();
     #endif
   }
 }

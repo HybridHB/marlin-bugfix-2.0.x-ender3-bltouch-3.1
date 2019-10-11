@@ -36,9 +36,10 @@ namespace FTDI {
 
   void SoundPlayer::play(effect_t effect, note_t note) {
 
-    #if ENABLED(TOUCH_UI_DEBUG)
+    #ifdef UI_FRAMEWORK_DEBUG
       SERIAL_ECHO_START();
-      SERIAL_ECHOLNPAIR("Playing note ", int(note), ", instrument ", int(effect));
+      SERIAL_ECHOPAIR("Playing note ", note);
+      SERIAL_ECHOLNPAIR(", instrument ", effect);
     #endif
 
     // Play the note

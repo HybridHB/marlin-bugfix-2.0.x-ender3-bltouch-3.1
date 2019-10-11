@@ -29,18 +29,18 @@
 
 void menu_game() {
   START_MENU();
-  BACK_ITEM(MSG_MAIN);
+  MENU_BACK(MSG_MAIN);
   #if ENABLED(MARLIN_BRICKOUT)
-    SUBMENU(MSG_BRICKOUT, brickout.enter_game);
+    MENU_ITEM(submenu, MSG_BRICKOUT, brickout.enter_game);
   #endif
   #if ENABLED(MARLIN_INVADERS)
-    SUBMENU(MSG_INVADERS, invaders.enter_game);
+    MENU_ITEM(submenu, MSG_INVADERS, invaders.enter_game);
   #endif
   #if ENABLED(MARLIN_SNAKE)
-    SUBMENU(MSG_SNAKE, snake.enter_game);
+    MENU_ITEM(submenu, MSG_SNAKE, snake.enter_game);
   #endif
   #if ENABLED(MARLIN_MAZE)
-    SUBMENU(MSG_MAZE, maze.enter_game);
+    MENU_ITEM(submenu, MSG_MAZE, maze.enter_game);
   #endif
   END_MENU();
 }

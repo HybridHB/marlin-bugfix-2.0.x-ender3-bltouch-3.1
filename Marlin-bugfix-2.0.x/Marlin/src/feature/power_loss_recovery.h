@@ -44,13 +44,13 @@ typedef struct {
   uint8_t valid_head;
 
   // Machine state
-  xyze_pos_t current_position;
+  float current_position[NUM_AXIS];
 
   #if HAS_HOME_OFFSET
-    xyz_pos_t home_offset;
+    float home_offset[XYZ];
   #endif
   #if HAS_POSITION_SHIFT
-    xyz_pos_t position_shift;
+    float position_shift[XYZ];
   #endif
 
   uint16_t feedrate;
@@ -169,7 +169,7 @@ class PrintJobRecovery {
   #if ENABLED(DEBUG_POWER_LOSS_RECOVERY)
     static void debug(PGM_P const prefix);
   #else
-    static inline void debug(PGM_P const) {}
+    static inline void debug(PGM_P const prefix) { UNUSED(prefix); }
   #endif
 
   private:

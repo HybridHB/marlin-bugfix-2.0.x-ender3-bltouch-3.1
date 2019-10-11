@@ -31,12 +31,8 @@
   #error "Formbot supports up to 3 hotends / E-steppers. Comment out this line to continue."
 #endif
 
-#ifndef BOARD_INFO_NAME
-  #define BOARD_INFO_NAME      "Formbot Raptor"
-#endif
-#ifndef DEFAULT_MACHINE_NAME
-  #define DEFAULT_MACHINE_NAME BOARD_INFO_NAME
-#endif
+#define BOARD_INFO_NAME      "Formbot Raptor"
+#define DEFAULT_MACHINE_NAME BOARD_INFO_NAME
 
 //
 // Servos

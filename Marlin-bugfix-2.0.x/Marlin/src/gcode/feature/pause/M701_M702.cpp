@@ -28,6 +28,7 @@
 #include "../../../Marlin.h"
 #include "../../../module/motion.h"
 #include "../../../module/temperature.h"
+#include "../../../libs/point_t.h"
 
 #if EXTRUDERS > 1
   #include "../../../module/tool_change.h"
@@ -56,11 +57,11 @@
  *  Default values are used for omitted arguments.
  */
 void GcodeSuite::M701() {
-  xyz_pos_t park_point = NOZZLE_PARK_POINT;
+  point_t park_point = NOZZLE_PARK_POINT;
 
   #if ENABLED(NO_MOTION_BEFORE_HOMING)
-    // Don't raise Z if the machine isn't homed
-    if (axes_need_homing()) park_point.z = 0;
+    // Only raise Z if the machine is homed
+    if (axis_unhomed_error()) park_point.z = 0;
   #endif
 
   #if ENABLED(MIXING_EXTRUDER)
@@ -96,31 +97,26 @@ void GcodeSuite::M701() {
 
   // Lift Z axis
   if (park_point.z > 0)
-    do_blocking_move_to_z(_MIN(current_position.z + park_point.z, Z_MAX_POS), feedRate_t(NOZZLE_PARK_Z_FEEDRATE));
+    do_blocking_move_to_z(_MIN(current_position[Z_AXIS] + park_point.z, Z_MAX_POS), NOZZLE_PARK_Z_FEEDRATE);
 
   // Load filament
   #if ENABLED(PRUSA_MMU2)
     mmu2.load_filament_to_nozzle(target_extruder);
   #else
-    constexpr float     purge_length = ADVANCED_PAUSE_PURGE_LENGTH,
-                    slow_load_length = FILAMENT_CHANGE_SLOW_LOAD_LENGTH;
-        const float fast_load_length = ABS(parser.seen('L') ? parser.value_axis_units(E_AXIS)
-                                                            : fc_settings[active_extruder].load_length);
-    load_filament(
-      slow_load_length, fast_load_length, purge_length,
-      FILAMENT_CHANGE_ALERT_BEEPS,
-      true,                                           // show_lcd
-      thermalManager.still_heating(target_extruder),  // pause_for_user
-      PAUSE_MODE_LOAD_FILAMENT                        // pause_mode
-      #if ENABLED(DUAL_X_CARRIAGE)
-        , target_extruder                             // Dual X target
-      #endif
-    );
+    constexpr float slow_load_length = FILAMENT_CHANGE_SLOW_LOAD_LENGTH;
+    const float fast_load_length = ABS(parser.seen('L') ? parser.value_axis_units(E_AXIS)
+                                                        : fc_settings[active_extruder].load_length);
+    load_filament(slow_load_length, fast_load_length, ADVANCED_PAUSE_PURGE_LENGTH, FILAMENT_CHANGE_ALERT_BEEPS,
+                  true, thermalManager.still_heating(target_extruder), PAUSE_MODE_LOAD_FILAMENT
+                  #if ENABLED(DUAL_X_CARRIAGE)
+                    , target_extruder
+                  #endif
+                );
   #endif
 
   // Restore Z axis
   if (park_point.z > 0)
-    do_blocking_move_to_z(_MAX(current_position.z - park_point.z, 0), feedRate_t(NOZZLE_PARK_Z_FEEDRATE));
+    do_blocking_move_to_z(_MAX(current_position[Z_AXIS] - park_point.z, 0), NOZZLE_PARK_Z_FEEDRATE);
 
   #if EXTRUDERS > 1 && DISABLED(PRUSA_MMU2)
     // Restore toolhead if it was changed
@@ -150,11 +146,11 @@ void GcodeSuite::M701() {
  *  Default values are used for omitted arguments.
  */
 void GcodeSuite::M702() {
-  xyz_pos_t park_point = NOZZLE_PARK_POINT;
+  point_t park_point = NOZZLE_PARK_POINT;
 
   #if ENABLED(NO_MOTION_BEFORE_HOMING)
-    // Don't raise Z if the machine isn't homed
-    if (axes_need_homing()) park_point.z = 0;
+    // Only raise Z if the machine is homed
+    if (axis_unhomed_error()) park_point.z = 0;
   #endif
 
   #if ENABLED(MIXING_EXTRUDER)
@@ -200,7 +196,7 @@ void GcodeSuite::M702() {
 
   // Lift Z axis
   if (park_point.z > 0)
-    do_blocking_move_to_z(_MIN(current_position.z + park_point.z, Z_MAX_POS), feedRate_t(NOZZLE_PARK_Z_FEEDRATE));
+    do_blocking_move_to_z(_MIN(current_position[Z_AXIS] + park_point.z, Z_MAX_POS), NOZZLE_PARK_Z_FEEDRATE);
 
   // Unload filament
   #if ENABLED(PRUSA_MMU2)
@@ -230,7 +226,7 @@ void GcodeSuite::M702() {
 
   // Restore Z axis
   if (park_point.z > 0)
-    do_blocking_move_to_z(_MAX(current_position.z - park_point.z, 0), feedRate_t(NOZZLE_PARK_Z_FEEDRATE));
+    do_blocking_move_to_z(_MAX(current_position[Z_AXIS] - park_point.z, 0), NOZZLE_PARK_Z_FEEDRATE);
 
   #if EXTRUDERS > 1 && DISABLED(PRUSA_MMU2)
     // Restore toolhead if it was changed

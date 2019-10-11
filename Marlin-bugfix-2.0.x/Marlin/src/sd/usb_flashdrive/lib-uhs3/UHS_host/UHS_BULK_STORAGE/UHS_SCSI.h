@@ -325,3 +325,4 @@ struct SCSI_Request_Sense_Response {
 } __attribute__((packed));
 
 #endif	/* UHS_SCSI_H */
+

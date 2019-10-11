@@ -23,9 +23,10 @@
 #pragma once
 
 #include "../ftdi_eve_lib/ftdi_eve_lib.h"
-#include "../language/language.h"
+#include "../language/languages.h"
 #include "../theme/theme.h"
-#include "string_format.h"
+
+#define ROUND(val) uint16_t((val)+0.5)
 
 extern tiny_timer_t refresh_timer;
 
@@ -55,7 +56,7 @@ enum {
   MAX_VELOCITY_SCREEN_CACHE,
   MAX_ACCELERATION_SCREEN_CACHE,
   DEFAULT_ACCELERATION_SCREEN_CACHE,
-#if DISABLED(CLASSIC_JERK)
+#if ENABLED(JUNCTION_DEVIATION)
   JUNC_DEV_SCREEN_CACHE,
 #else
   JERK_SCREEN_CACHE,
@@ -97,8 +98,6 @@ class BaseScreen : public UIScreen {
       static uint32_t last_interaction;
     #endif
 
-    static bool buttonIsPressed(uint8_t tag);
-
   public:
     static bool buttonStyleCallback(CommandProcessor &, uint8_t, uint8_t &, uint16_t &, bool);
 
@@ -135,7 +134,7 @@ class KillScreen {
   // The KillScreen is behaves differently than the
   // others, so we do not bother extending UIScreen.
   public:
-    static void show(const char*);
+    static void show(progmem_str msg);
 };
 
 class DialogBoxBaseClass : public BaseScreen {
@@ -177,20 +176,6 @@ class SaveSettingsDialogBox : public DialogBoxBaseClass, public UncachedScreen {
 
     static void promptToSaveSettings();
     static void settingsChanged() {needs_save = true;}
-};
-
-class ConfirmStartPrintDialogBox : public DialogBoxBaseClass, public UncachedScreen {
-  private:
-    inline static const char *getShortFilename() {return getFilename(false);}
-    inline static const char *getLongFilename()  {return getFilename(true);}
-
-    static const char *getFilename(bool longName);
-  public:
-    static void onEntry();
-    static void onRedraw(draw_mode_t);
-    static bool onTouchEnd(uint8_t);
-
-    static void show(uint8_t file_index);
 };
 
 class ConfirmAbortPrintDialogBox : public DialogBoxBaseClass, public UncachedScreen {
@@ -369,19 +354,10 @@ class BaseNumericAdjustmentScreen : public BaseScreen {
         uint32_t    _color;
         uint8_t     _decimals;
         progmem_str _units;
-        enum style_t {
-          BTN_NORMAL,
-          BTN_ACTION,
-          BTN_TOGGLE,
-          BTN_DISABLED,
-          TEXT_AREA,
-          TEXT_LABEL
-        } _style;
 
       protected:
-        void _draw_increment_btn(CommandProcessor &, uint8_t line, const uint8_t tag);
-        void _button(CommandProcessor &, uint8_t tag, int16_t x, int16_t y, int16_t w, int16_t h, progmem_str, bool enabled = true, bool highlight = false);
-        void _button_style(CommandProcessor &cmd, style_t style);
+        void _draw_increment_btn(uint8_t line, const uint8_t tag);
+
       public:
         widgets_t(draw_mode_t);
 
@@ -503,7 +479,7 @@ class DefaultAccelerationScreen : public BaseNumericAdjustmentScreen, public Cac
     static bool onTouchHeld(uint8_t tag);
 };
 
-#if DISABLED(CLASSIC_JERK)
+#if ENABLED(JUNCTION_DEVIATION)
   class JunctionDeviationScreen : public BaseNumericAdjustmentScreen, public CachedScreen<JUNC_DEV_SCREEN_CACHE> {
     public:
       static void onRedraw(draw_mode_t);
@@ -652,11 +628,9 @@ class FilesScreen : public BaseScreen, public CachedScreen<FILES_SCREEN_CACHE, F
     static uint8_t  getTagForLine(uint8_t line) {return line + 2;}
     static uint8_t  getLineForTag(uint8_t tag)  {return  tag - 2;}
     static uint16_t getFileForTag(uint8_t tag);
-    static uint16_t getSelectedFileIndex();
 
-    inline static const char *getSelectedShortFilename() {return getSelectedFilename(false);}
-    inline static const char *getSelectedLongFilename()  {return getSelectedFilename(true);}
-    static const char *getSelectedFilename(bool longName);
+    static const char *getSelectedShortFilename();
+    static const char *getSelectedLongFilename();
 
     static void drawFileButton(const char* filename, uint8_t tag, bool is_dir, bool is_highlighted);
     static void drawFileList();
@@ -740,7 +714,7 @@ class MediaPlayerScreen : public BaseScreen, public UncachedScreen {
     static void playStream(void *obj, media_streamer_func_t*);
 };
 
-#if NUM_LANGUAGES > 1
+#if ENABLED(TOUCH_UI_LANGUAGE_MENU)
   class LanguageMenu : public BaseScreen, public UncachedScreen {
     public:
       static void onRedraw(draw_mode_t);

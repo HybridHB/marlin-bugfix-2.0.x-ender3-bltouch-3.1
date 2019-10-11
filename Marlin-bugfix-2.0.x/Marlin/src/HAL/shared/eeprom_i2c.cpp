@@ -43,7 +43,11 @@ static uint8_t eeprom_device_address = 0x50;
 // ------------------------
 
 static void eeprom_init() {
-  Wire.begin();
+  static bool eeprom_initialized = false;
+  if (!eeprom_initialized) {
+    Wire.begin();
+    eeprom_initialized = true;
+  }
 }
 
 void eeprom_write_byte(uint8_t *pos, unsigned char value) {

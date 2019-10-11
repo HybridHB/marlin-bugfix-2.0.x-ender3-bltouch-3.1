@@ -1,9 +1,10 @@
-/****************
+/*****************
  * language.cpp *
- ****************/
+ *****************/
 
 /****************************************************************************
- *   Written By Marcio Teixeira 2019 - Aleph Objects, Inc.                  *
+ *   Written By Mark Pelletier  2017 - Aleph Objects, Inc.                  *
+ *   Written By Marcio Teixeira 2018 - Aleph Objects, Inc.                  *
  *                                                                          *
  *   This program is free software: you can redistribute it and/or modify   *
  *   it under the terms of the GNU General Public License as published by   *
@@ -19,9 +20,36 @@
  *   location: <http://www.gnu.org/licenses/>.                              *
  ****************************************************************************/
 
+#include "../compat.h"
 
-#include "../../../../../Marlin.h"
+#if ENABLED(LULZBOT_TOUCH_UI) && defined(TOUCH_UI_LANGUAGE_MENU)
 
-#include "language.h"
+  #include "language_de.h"
+  #include "language_en.h"
+  #include "language_fr.h"
 
-uint8_t lang = 0;
+  PROGMEM Language_List languages = {
+    &Language_de::strings,
+    &Language_en::strings,
+    &Language_fr::strings
+  };
+
+  uint8_t get_language_count() {
+    return sizeof(languages)/sizeof(languages[0]);
+  }
+
+  static uint8_t lang = 0;
+
+  void set_language(uint8_t l) {
+    lang = l;
+  };
+
+  const char *get_text(uint8_t lang, String_Indices index) {
+    const Language_Strings* strings = (const Language_Strings*) pgm_read_ptr(&languages[lang]);
+    return (const char *)pgm_read_ptr(&(*strings)[int(index)]);
+  };
+
+  const char *get_text(String_Indices index) {
+    return get_text(lang, index);
+  };
+#endif

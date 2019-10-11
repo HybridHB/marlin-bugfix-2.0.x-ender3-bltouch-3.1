@@ -22,7 +22,6 @@
 #pragma once
 
 #include "../inc/MarlinConfigPre.h"
-#include "../core/types.h"
 
 #if EXTRUDERS > 1
 
@@ -32,7 +31,7 @@
       int16_t prime_speed, retract_speed;
     #endif
     #if ENABLED(TOOLCHANGE_PARK)
-      xy_pos_t change_point;
+      struct { float x, y; } change_point;
     #endif
     float z_raise;
   } toolchange_settings_t;
@@ -72,12 +71,12 @@
 #elif ENABLED(MAGNETIC_PARKING_EXTRUDER)
 
   typedef struct MPESettings {
-      float parking_xpos[2],      // M951 L R
-            grab_distance;        // M951 I
- feedRate_t slow_feedrate,        // M951 J
-            fast_feedrate;        // M951 H
-      float travel_distance,      // M951 D
-            compensation_factor;  // M951 C
+    float parking_xpos[2],      // M951 L R
+          grab_distance,        // M951 I
+          slow_feedrate,        // M951 J
+          fast_feedrate,        // M951 H
+          travel_distance,      // M951 D
+          compensation_factor;  // M951 C
   } mpe_settings_t;
 
   extern mpe_settings_t mpe_settings;

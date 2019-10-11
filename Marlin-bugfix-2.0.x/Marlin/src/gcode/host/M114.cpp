@@ -36,7 +36,7 @@
     #include "../../core/debug_out.h"
   #endif
 
-  void report_xyze(const xyze_pos_t &pos, const uint8_t n=4, const uint8_t precision=3) {
+  void report_xyze(const float pos[], const uint8_t n = 4, const uint8_t precision = 3) {
     char str[12];
     for (uint8_t a = 0; a < n; a++) {
       SERIAL_CHAR(' ');
@@ -47,27 +47,22 @@
     SERIAL_EOL();
   }
 
-  void report_xyz(const xyz_pos_t &pos, const uint8_t precision=3) {
-    char str[12];
-    for (uint8_t a = X_AXIS; a <= Z_AXIS; a++) {
-      SERIAL_CHAR(' ');
-      SERIAL_CHAR(axis_codes[a]);
-      SERIAL_CHAR(':');
-      SERIAL_ECHO(dtostrf(pos[a], 1, precision, str));
-    }
-    SERIAL_EOL();
-  }
-  inline void report_xyz(const xyze_pos_t &pos) { report_xyze(pos, 3); }
+  inline void report_xyz(const float pos[]) { report_xyze(pos, 3); }
 
   void report_current_position_detail() {
 
     SERIAL_ECHOPGM("\nLogical:");
-    report_xyz(current_position.asLogical());
+    const float logical[XYZ] = {
+      LOGICAL_X_POSITION(current_position[X_AXIS]),
+      LOGICAL_Y_POSITION(current_position[Y_AXIS]),
+      LOGICAL_Z_POSITION(current_position[Z_AXIS])
+    };
+    report_xyz(logical);
 
     SERIAL_ECHOPGM("Raw:    ");
     report_xyz(current_position);
 
-    xyze_pos_t leveled = current_position;
+    float leveled[XYZ] = { current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS] };
 
     #if HAS_LEVELING
       SERIAL_ECHOPGM("Leveled:");
@@ -75,7 +70,7 @@
       report_xyz(leveled);
 
       SERIAL_ECHOPGM("UnLevel:");
-      xyze_pos_t unleveled = leveled;
+      float unleveled[XYZ] = { leveled[X_AXIS], leveled[Y_AXIS], leveled[Z_AXIS] };
       planner.unapply_leveling(unleveled);
       report_xyz(unleveled);
     #endif
@@ -158,7 +153,7 @@
     SERIAL_EOL();
 
     #if IS_SCARA
-      const xy_float_t deg = {
+      const float deg[XYZ] = {
         planner.get_axis_position_degrees(A_AXIS),
         planner.get_axis_position_degrees(B_AXIS)
       };
@@ -167,12 +162,17 @@
     #endif
 
     SERIAL_ECHOPGM("FromStp:");
-    get_cartesian_from_steppers();  // writes 'cartes' (with forward kinematics)
-    xyze_pos_t from_steppers = { cartes.x, cartes.y, cartes.z, planner.get_axis_position_mm(E_AXIS) };
+    get_cartesian_from_steppers();  // writes cartes[XYZ] (with forward kinematics)
+    const float from_steppers[XYZE] = { cartes[X_AXIS], cartes[Y_AXIS], cartes[Z_AXIS], planner.get_axis_position_mm(E_AXIS) };
     report_xyze(from_steppers);
 
-    const xyze_float_t diff = from_steppers - leveled;
-    SERIAL_ECHOPGM("Diff: ");
+    const float diff[XYZE] = {
+      from_steppers[X_AXIS] - leveled[X_AXIS],
+      from_steppers[Y_AXIS] - leveled[Y_AXIS],
+      from_steppers[Z_AXIS] - leveled[Z_AXIS],
+      from_steppers[E_AXIS] - current_position[E_AXIS]
+    };
+    SERIAL_ECHOPGM("Differ: ");
     report_xyze(diff);
   }
 

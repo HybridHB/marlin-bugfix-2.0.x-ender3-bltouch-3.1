@@ -184,10 +184,15 @@ void spiBegin() {
   // nop to tune soft SPI timing
   #define nop asm volatile ("\tnop\n")
 
-  void spiInit(uint8_t) { /* do nothing */ }
+  // Set SPI rate
+  void spiInit(uint8_t spiRate) {
+    UNUSED(spiRate);  // nothing to do
+  }
 
   // Begin SPI transaction, set clock, bit order, data mode
-  void spiBeginTransaction(uint32_t spiClock, uint8_t bitOrder, uint8_t dataMode) { /* do nothing */ }
+  void spiBeginTransaction(uint32_t spiClock, uint8_t bitOrder, uint8_t dataMode) {
+    UNUSED(spiBeginTransaction);  // nothing to do
+  }
 
   // Soft SPI receive byte
   uint8_t spiRec() {

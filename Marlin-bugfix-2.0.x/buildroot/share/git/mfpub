@@ -77,17 +77,15 @@ else
     git push -f origin
   fi
 
-  which xdg-open >/dev/null && TOOL=xdg-open
-  which gnome-open >/dev/null && TOOL=gnome-open
-  which open >/dev/null && TOOL=open
+  TOOL=$(which gnome-open xdg-open open | awk '{ print $1 }')
   URL="https://github.com/$ORG/$REPO/compare/$TARG...$FORK:$BRANCH?expand=1"
 
-  if [ -z "$OPEN" ]; then
+  if [ -z "$TOOL" ]; then
     echo "Can't find a tool to open the URL:"
     echo $URL
   else
     echo "Opening a New PR Form..."
-    "$OPEN" "$URL"
+    "$TOOL" "$URL"
   fi
 
 fi
@@ -118,16 +116,14 @@ git checkout gh-pages || { echo "Something went wrong!"; exit 1; }
 rsync -av ${TMPFOLDER}/ ./
 
 opensite() {
-  which xdg-open >/dev/null && TOOL=xdg-open
-  which gnome-open >/dev/null && TOOL=gnome-open
-  which open >/dev/null && TOOL=open
+  TOOL=$(which gnome-open xdg-open open | awk '{ print $1 }')
   URL="http://marlinfw.org/"
-  if [ -z "$OPEN" ]; then
+  if [ -z "$TOOL" ]; then
     echo "Can't find a tool to open the URL:"
     echo $URL
   else
     echo "Opening the site in the browser..."
-    "$OPEN" "$URL"
+    "$TOOL" "$URL"
   fi
 }
 

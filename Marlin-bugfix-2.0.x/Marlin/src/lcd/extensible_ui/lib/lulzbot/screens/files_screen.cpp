@@ -41,15 +41,21 @@ void FilesScreen::onEntry() {
   BaseScreen::onEntry();
 }
 
-const char *FilesScreen::getSelectedFilename(bool longName) {
+const char *FilesScreen::getSelectedShortFilename() {
   FileList files;
-  files.seek(getSelectedFileIndex(), true);
-  return longName ? files.longFilename() : files.shortFilename();
+  files.seek(getFileForTag(screen_data.FilesScreen.selected_tag), true);
+  return files.shortFilename();
+}
+
+const char *FilesScreen::getSelectedLongFilename() {
+  FileList files;
+  files.seek(getFileForTag(screen_data.FilesScreen.selected_tag), true);
+  return files.longFilename();
 }
 
 void FilesScreen::drawSelectedFile() {
   FileList files;
-  files.seek(getSelectedFileIndex(), true);
+  files.seek(getFileForTag(screen_data.FilesScreen.selected_tag), true);
   screen_data.FilesScreen.flags.is_dir = files.isDir();
   drawFileButton(
     files.filename(),
@@ -57,10 +63,6 @@ void FilesScreen::drawSelectedFile() {
     screen_data.FilesScreen.flags.is_dir,
     true
   );
-}
-
-uint16_t FilesScreen::getSelectedFileIndex() {
-  return getFileForTag(screen_data.FilesScreen.selected_tag);
 }
 
 uint16_t FilesScreen::getFileForTag(uint8_t tag) {
@@ -167,13 +169,13 @@ void FilesScreen::drawFooter() {
   cmd.colors(normal_btn)
      .font(font_medium)
      .colors(has_selection ? normal_btn : action_btn)
-     .tag(back_tag).button( BTN_POS(4,y), BTN_SIZE(3,h), GET_TEXT_F(BACK))
+     .tag(back_tag).button( BTN_POS(4,y), BTN_SIZE(3,h), GET_TEXTF(BACK))
      .enabled(has_selection)
      .colors(has_selection ? action_btn : normal_btn);
   if (screen_data.FilesScreen.flags.is_dir) {
-    cmd.tag(244).button( BTN_POS(1, y), BTN_SIZE(3,h), GET_TEXT_F(OPEN_DIR));
+    cmd.tag(244).button( BTN_POS(1, y), BTN_SIZE(3,h), GET_TEXTF(OPEN_DIR));
   } else {
-    cmd.tag(243).button( BTN_POS(1, y), BTN_SIZE(3,h), GET_TEXT_F(PRINT_FILE));
+    cmd.tag(243).button( BTN_POS(1, y), BTN_SIZE(3,h), GET_TEXTF(PRINT_FILE));
   }
 }
 
@@ -211,7 +213,9 @@ bool FilesScreen::onTouchEnd(uint8_t tag) {
       }
       break;
     case 243:
-      ConfirmStartPrintDialogBox::show(getSelectedFileIndex());
+      printFile(getSelectedShortFilename());
+      StatusScreen::setStatusMessage(GET_TEXTF(PRINT_STARTING));
+      GOTO_SCREEN(StatusScreen);
       return true;
     case 244:
       {

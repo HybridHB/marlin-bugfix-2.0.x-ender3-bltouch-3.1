@@ -64,11 +64,10 @@ void GcodeSuite::M420() {
   #if ENABLED(MARLIN_DEV_MODE)
     if (parser.intval('S') == 2) {
       #if ENABLED(AUTO_BED_LEVELING_BILINEAR)
-        const float x_min = probe_min_x(), x_max = probe_max_x(),
-                    y_min = probe_min_y(), y_max = probe_max_y();
-        bilinear_start.set(x_min, y_min);
-        bilinear_grid_spacing.set((x_max - x_min) / (GRID_MAX_POINTS_X - 1),
-                                  (y_max - y_min) / (GRID_MAX_POINTS_Y - 1));
+        bilinear_start[X_AXIS] = MIN_PROBE_X;
+        bilinear_start[Y_AXIS] = MIN_PROBE_Y;
+        bilinear_grid_spacing[X_AXIS] = (MAX_PROBE_X - (MIN_PROBE_X)) / (GRID_MAX_POINTS_X - 1);
+        bilinear_grid_spacing[Y_AXIS] = (MAX_PROBE_Y - (MIN_PROBE_Y)) / (GRID_MAX_POINTS_Y - 1);
       #endif
       for (uint8_t x = 0; x < GRID_MAX_POINTS_X; x++)
         for (uint8_t y = 0; y < GRID_MAX_POINTS_Y; y++) {
@@ -77,11 +76,11 @@ void GcodeSuite::M420() {
             ExtUI::onMeshUpdate(x, y, Z_VALUES(x, y));
           #endif
         }
-      SERIAL_ECHOPGM("Simulated " STRINGIFY(GRID_MAX_POINTS_X) "x" STRINGIFY(GRID_MAX_POINTS_Y) " mesh ");
-      SERIAL_ECHOPAIR(" (", x_min);
-      SERIAL_CHAR(','); SERIAL_ECHO(y_min);
-      SERIAL_ECHOPAIR(")-(", x_max);
-      SERIAL_CHAR(','); SERIAL_ECHO(y_max);
+      SERIAL_ECHOPGM("Simulated " STRINGIFY(GRID_MAX_POINTS_X) "x" STRINGIFY(GRID_MAX_POINTS_X) " mesh ");
+      SERIAL_ECHOPAIR(" (", MIN_PROBE_X);
+      SERIAL_CHAR(','); SERIAL_ECHO(MIN_PROBE_Y);
+      SERIAL_ECHOPAIR(")-(", MAX_PROBE_X);
+      SERIAL_CHAR(','); SERIAL_ECHO(MAX_PROBE_Y);
       SERIAL_ECHOLNPGM(")");
     }
   #endif
@@ -90,7 +89,7 @@ void GcodeSuite::M420() {
   // (Don't disable for just M420 or M420 V)
   if (seen_S && !to_enable) set_bed_leveling_enabled(false);
 
-  xyz_pos_t oldpos = current_position;
+  const float oldpos[] = { current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS] };
 
   #if ENABLED(AUTO_BED_LEVELING_UBL)
 
@@ -126,7 +125,7 @@ void GcodeSuite::M420() {
     }
 
     // L or V display the map info
-    if (parser.seen("LV")) {
+    if (parser.seen('L') || parser.seen('V')) {
       ubl.display_map(parser.byteval('T'));
       SERIAL_ECHOPGM("Mesh is ");
       if (!ubl.mesh_is_valid()) SERIAL_ECHOPGM("in");
@@ -250,7 +249,7 @@ void GcodeSuite::M420() {
   #endif
 
   // Report change in position
-  if (oldpos != current_position)
+  if (memcmp(oldpos, current_position, sizeof(oldpos)))
     report_current_position();
 }
 

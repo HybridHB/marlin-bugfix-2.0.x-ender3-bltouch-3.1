@@ -35,10 +35,10 @@
   #include "../../module/stepper.h"
 #endif
 
-extern xyze_pos_t destination;
+extern float destination[XYZE];
 
 #if ENABLED(VARIABLE_G0_FEEDRATE)
-  feedRate_t fast_move_feedrate = MMM_TO_MMS(G0_FEEDRATE);
+  float saved_g0_feedrate_mm_s = MMM_TO_MMS(G0_FEEDRATE);
 #endif
 
 /**
@@ -46,37 +46,34 @@ extern xyze_pos_t destination;
  */
 void GcodeSuite::G0_G1(
   #if IS_SCARA || defined(G0_FEEDRATE)
-    const bool fast_move/*=false*/
+    bool fast_move/*=false*/
   #endif
 ) {
 
   if (IsRunning()
     #if ENABLED(NO_MOTION_BEFORE_HOMING)
-      && !axis_unhomed_error(
-          (parser.seen('X') ? _BV(X_AXIS) : 0)
-        | (parser.seen('Y') ? _BV(Y_AXIS) : 0)
-        | (parser.seen('Z') ? _BV(Z_AXIS) : 0) )
+      && !axis_unhomed_error(parser.seen('X'), parser.seen('Y'), parser.seen('Z'))
     #endif
   ) {
 
     #ifdef G0_FEEDRATE
-      feedRate_t old_feedrate;
+      float saved_feedrate_mm_s;
       #if ENABLED(VARIABLE_G0_FEEDRATE)
         if (fast_move) {
-          old_feedrate = feedrate_mm_s;             // Back up the (old) motion mode feedrate
-          feedrate_mm_s = fast_move_feedrate;       // Get G0 feedrate from last usage
+          saved_feedrate_mm_s = feedrate_mm_s;      // Back up the (old) motion mode feedrate
+          feedrate_mm_s = saved_g0_feedrate_mm_s;   // Get G0 feedrate from last usage
         }
       #endif
     #endif
 
-    get_destination_from_command();                 // Process X Y Z E F parameters
+    get_destination_from_command(); // For X Y Z E F
 
     #ifdef G0_FEEDRATE
       if (fast_move) {
         #if ENABLED(VARIABLE_G0_FEEDRATE)
-          fast_move_feedrate = feedrate_mm_s;       // Save feedrate for the next G0
+          saved_g0_feedrate_mm_s = feedrate_mm_s;   // Save feedrate for the next G0
         #else
-          old_feedrate = feedrate_mm_s;             // Back up the (new) motion mode feedrate
+          saved_feedrate_mm_s = feedrate_mm_s;      // Back up the (new) motion mode feedrate
           feedrate_mm_s = MMM_TO_MMS(G0_FEEDRATE);  // Get the fixed G0 feedrate
         #endif
       }
@@ -87,12 +84,12 @@ void GcodeSuite::G0_G1(
       if (MIN_AUTORETRACT <= MAX_AUTORETRACT) {
         // When M209 Autoretract is enabled, convert E-only moves to firmware retract/recover moves
         if (fwretract.autoretract_enabled && parser.seen('E') && !(parser.seen('X') || parser.seen('Y') || parser.seen('Z'))) {
-          const float echange = destination.e - current_position.e;
+          const float echange = destination[E_AXIS] - current_position[E_AXIS];
           // Is this a retract or recover move?
           if (WITHIN(ABS(echange), MIN_AUTORETRACT, MAX_AUTORETRACT) && fwretract.retracted[active_extruder] == (echange > 0.0)) {
-            current_position.e = destination.e;       // Hide a G1-based retract/recover from calculations
-            sync_plan_position_e();                   // AND from the planner
-            return fwretract.retract(echange < 0.0);  // Firmware-based retract/recover (double-retract ignored)
+            current_position[E_AXIS] = destination[E_AXIS]; // Hide a G1-based retract/recover from calculations
+            sync_plan_position_e();                         // AND from the planner
+            return fwretract.retract(echange < 0.0);        // Firmware-based retract/recover (double-retract ignored)
           }
         }
       }
@@ -100,14 +97,14 @@ void GcodeSuite::G0_G1(
     #endif // FWRETRACT
 
     #if IS_SCARA
-      fast_move ? prepare_fast_move_to_destination() : prepare_move_to_destination();
+      fast_move ? prepare_uninterpolated_move_to_destination() : prepare_move_to_destination();
     #else
       prepare_move_to_destination();
     #endif
 
     #ifdef G0_FEEDRATE
       // Restore the motion mode feedrate
-      if (fast_move) feedrate_mm_s = old_feedrate;
+      if (fast_move) feedrate_mm_s = saved_feedrate_mm_s;
     #endif
 
     #if ENABLED(NANODLP_Z_SYNC)

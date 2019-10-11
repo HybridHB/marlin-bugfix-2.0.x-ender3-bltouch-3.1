@@ -306,9 +306,6 @@ public:
       PORT_REDIRECT(card.transfer_port_index);
     #endif
 
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Warray-bounds"
-
     while (PENDING(millis(), transfer_window)) {
       switch (stream_state) {
          /**
@@ -442,8 +439,6 @@ public:
           break;
       }
     }
-
-    #pragma GCC diagnostic pop
   }
 
   void dispatch() {

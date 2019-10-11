@@ -104,11 +104,12 @@ extern "C" {
 // ADC
 // ------------------------
 
-// TODO: Make sure this doesn't cause any delay
-void HAL_adc_start_conversion(const uint8_t adc_pin) { HAL_adc_result = analogRead(adc_pin); }
+void HAL_adc_start_conversion(const uint8_t adc_pin) {
+  HAL_adc_result = analogRead(adc_pin);
+}
 
-uint16_t HAL_adc_get_result() { return HAL_adc_result; }
-
-void flashFirmware(int16_t) { NVIC_SystemReset(); }
+uint16_t HAL_adc_get_result() {
+  return HAL_adc_result;
+}
 
 #endif // ARDUINO_ARCH_STM32 && !STM32GENERIC

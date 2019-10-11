@@ -43,13 +43,13 @@
   #endif
 
   #ifdef PHOTO_RETRACT_MM
-    inline void e_move_m240(const float length, const feedRate_t &fr_mm_s) {
+    inline void e_move_m240(const float length, const float fr_mm_s) {
       if (length && thermalManager.hotEnoughToExtrude(active_extruder)) {
         #if ENABLED(ADVANCED_PAUSE_FEATURE)
           do_pause_e_move(length, fr_mm_s);
         #else
-          current_position.e += length / planner.e_factor[active_extruder];
-          line_to_current_position(fr_mm_s);
+          current_position[E_AXIS] += length / planner.e_factor[active_extruder];
+          planner.buffer_line(current_position, fr_mm_s, active_extruder);
         #endif
       }
     }
@@ -97,15 +97,14 @@ void GcodeSuite::M240() {
 
     if (axis_unhomed_error()) return;
 
-    const xyz_pos_t old_pos = {
-      current_position.x + parser.linearval('A'),
-      current_position.y + parser.linearval('B'),
-      current_position.z
+    const float old_pos[XYZ] = {
+      current_position[X_AXIS] + parser.linearval('A'),
+      current_position[Y_AXIS] + parser.linearval('B'),
+      current_position[Z_AXIS]
     };
 
     #ifdef PHOTO_RETRACT_MM
-      const float rval = parser.seenval('R') ? parser.value_linear_units() : _PHOTO_RETRACT_MM;
-      feedRate_t sval = (
+      constexpr float rfr = (MMS_TO_MMM(
         #if ENABLED(ADVANCED_PAUSE_FEATURE)
           PAUSE_PARK_RETRACT_FEEDRATE
         #elif ENABLED(FWRETRACT)
@@ -113,30 +112,31 @@ void GcodeSuite::M240() {
         #else
           45
         #endif
-      );
-      if (parser.seenval('S')) sval = parser.value_feedrate();
+      ));
+      const float rval = parser.seenval('R') ? parser.value_linear_units() : _PHOTO_RETRACT_MM,
+                  sval = parser.seenval('S') ? MMM_TO_MMS(parser.value_feedrate()) : rfr;
       e_move_m240(-rval, sval);
     #endif
 
-    feedRate_t fr_mm_s = MMM_TO_MMS(parser.linearval('F'));
+    float fr_mm_s = MMM_TO_MMS(parser.linearval('F'));
     if (fr_mm_s) NOLESS(fr_mm_s, 10.0f);
 
-    constexpr xyz_pos_t photo_position = PHOTO_POSITION;
-    xyz_pos_t raw = {
-       parser.seenval('X') ? RAW_X_POSITION(parser.value_linear_units()) : photo_position.x,
-       parser.seenval('Y') ? RAW_Y_POSITION(parser.value_linear_units()) : photo_position.y,
-      (parser.seenval('Z') ? parser.value_linear_units() : photo_position.z) + current_position.z
+    constexpr float photo_position[XYZ] = PHOTO_POSITION;
+    float raw[XYZ] = {
+       parser.seenval('X') ? RAW_X_POSITION(parser.value_linear_units()) : photo_position[X_AXIS],
+       parser.seenval('Y') ? RAW_Y_POSITION(parser.value_linear_units()) : photo_position[Y_AXIS],
+      (parser.seenval('Z') ? parser.value_linear_units() : photo_position[Z_AXIS]) + current_position[Z_AXIS]
     };
     apply_motion_limits(raw);
     do_blocking_move_to(raw, fr_mm_s);
 
     #ifdef PHOTO_SWITCH_POSITION
-      constexpr xy_pos_t photo_switch_position = PHOTO_SWITCH_POSITION;
-      const xy_pos_t sraw = {
-         parser.seenval('I') ? RAW_X_POSITION(parser.value_linear_units()) : photo_switch_position.x,
-         parser.seenval('J') ? RAW_Y_POSITION(parser.value_linear_units()) : photo_switch_position.y
+      constexpr float photo_switch_position[2] = PHOTO_SWITCH_POSITION;
+      const float sraw[] = {
+         parser.seenval('I') ? RAW_X_POSITION(parser.value_linear_units()) : photo_switch_position[X_AXIS],
+         parser.seenval('J') ? RAW_Y_POSITION(parser.value_linear_units()) : photo_switch_position[Y_AXIS]
       };
-      do_blocking_move_to_xy(sraw, get_homing_bump_feedrate(X_AXIS));
+      do_blocking_move_to_xy(sraw[X_AXIS], sraw[Y_AXIS], get_homing_bump_feedrate(X_AXIS));
       #if PHOTO_SWITCH_MS > 0
         safe_delay(parser.intval('D', PHOTO_SWITCH_MS));
       #endif

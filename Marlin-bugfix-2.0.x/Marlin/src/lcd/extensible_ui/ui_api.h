@@ -45,7 +45,6 @@
 #include "../../inc/MarlinConfig.h"
 
 namespace ExtUI {
-
   // The ExtUI implementation can store up to this many bytes
   // in the EEPROM when the methods onStoreSettings and
   // onLoadSettings are called.
@@ -80,11 +79,6 @@ namespace ExtUI {
   void enableHeater(const heater_t);
   void enableHeater(const extruder_t);
 
-  #if ENABLED(JOYSTICK)
-    void jog(const xyz_float_t &dir);
-    void _joystick_update(xyz_float_t &norm_jog);
-  #endif
-
   /**
    * Getters and setters
    * Should be used by the EXTENSIBLE_UI to query or change Marlin's state.
@@ -102,7 +96,7 @@ namespace ExtUI {
     void  setAxisCurrent_mA(const float, const axis_t);
     void  setAxisCurrent_mA(const float, const extruder_t);
 
-     int getTMCBumpSensitivity(const axis_t);
+    int getTMCBumpSensitivity(const axis_t);
     void setTMCBumpSensitivity(const float, const axis_t);
   #endif
 
@@ -116,12 +110,12 @@ namespace ExtUI {
   float getAxisPosition_mm(const extruder_t);
   float getAxisSteps_per_mm(const axis_t);
   float getAxisSteps_per_mm(const extruder_t);
-  feedRate_t getAxisMaxFeedrate_mm_s(const axis_t);
-  feedRate_t getAxisMaxFeedrate_mm_s(const extruder_t);
+  float getAxisMaxFeedrate_mm_s(const axis_t);
+  float getAxisMaxFeedrate_mm_s(const extruder_t);
   float getAxisMaxAcceleration_mm_s2(const axis_t);
   float getAxisMaxAcceleration_mm_s2(const extruder_t);
-  feedRate_t getMinFeedrate_mm_s();
-  feedRate_t getMinTravelFeedrate_mm_s();
+  float getMinFeedrate_mm_s();
+  float getMinTravelFeedrate_mm_s();
   float getPrintingAcceleration_mm_s2();
   float getRetractAcceleration_mm_s2();
   float getTravelAcceleration_mm_s2();
@@ -135,10 +129,9 @@ namespace ExtUI {
     bool getMeshValid();
     #if HAS_MESH
       bed_mesh_t& getMeshArray();
-      float getMeshPoint(const xy_uint8_t &pos);
-      void setMeshPoint(const xy_uint8_t &pos, const float zval);
+      float getMeshPoint(const uint8_t xpos, const uint8_t ypos);
+      void setMeshPoint(const uint8_t xpos, const uint8_t ypos, const float zval);
       void onMeshUpdate(const uint8_t xpos, const uint8_t ypos, const float zval);
-      inline void onMeshUpdate(const xy_uint8_t &pos, const float zval) { onMeshUpdate(pos.x, pos.y, zval); }
     #endif
   #endif
 
@@ -161,13 +154,13 @@ namespace ExtUI {
   void setAxisPosition_mm(const float, const extruder_t);
   void setAxisSteps_per_mm(const float, const axis_t);
   void setAxisSteps_per_mm(const float, const extruder_t);
-  void setAxisMaxFeedrate_mm_s(const feedRate_t, const axis_t);
-  void setAxisMaxFeedrate_mm_s(const feedRate_t, const extruder_t);
+  void setAxisMaxFeedrate_mm_s(const float, const axis_t);
+  void setAxisMaxFeedrate_mm_s(const float, const extruder_t);
   void setAxisMaxAcceleration_mm_s2(const float, const axis_t);
   void setAxisMaxAcceleration_mm_s2(const float, const extruder_t);
-  void setFeedrate_mm_s(const feedRate_t);
-  void setMinFeedrate_mm_s(const feedRate_t);
-  void setMinTravelFeedrate_mm_s(const feedRate_t);
+  void setFeedrate_mm_s(const float);
+  void setMinFeedrate_mm_s(const float);
+  void setMinTravelFeedrate_mm_s(const float);
   void setPrintingAcceleration_mm_s2(const float);
   void setRetractAcceleration_mm_s2(const float);
   void setTravelAcceleration_mm_s2(const float);
@@ -179,7 +172,7 @@ namespace ExtUI {
     void setLinearAdvance_mm_mm_s(const float, const extruder_t);
   #endif
 
-  #if DISABLED(CLASSIC_JERK)
+  #if ENABLED(JUNCTION_DEVIATION)
     float getJunctionDeviation_mm();
     void setJunctionDeviation_mm(const float);
   #else
@@ -279,7 +272,7 @@ namespace ExtUI {
       void changeDir(const char * const dirname);
       void upDir();
       bool isAtRootDir();
-      uint16_t count();
+      uint16_t    count();
   };
 
   /**
@@ -293,13 +286,12 @@ namespace ExtUI {
   void onMediaError();
   void onMediaRemoved();
   void onPlayTone(const uint16_t frequency, const uint16_t duration);
-  void onPrinterKilled(PGM_P const error, PGM_P const component);
+  void onPrinterKilled(PGM_P const msg);
   void onPrintTimerStarted();
   void onPrintTimerPaused();
   void onPrintTimerStopped();
   void onFilamentRunout(const extruder_t extruder);
   void onUserConfirmRequired(const char * const msg);
-  void onUserConfirmRequired_P(PGM_P const pstr);
   void onStatusChanged(const char * const msg);
   void onFactoryReset();
   void onStoreSettings(char *);

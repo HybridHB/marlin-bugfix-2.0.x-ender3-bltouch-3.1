@@ -33,7 +33,7 @@
 void GcodeSuite::M16() {
 
   if (strcmp_P(parser.string_arg, PSTR(MACHINE_NAME)))
-    kill(GET_TEXT(MSG_EXPECTED_PRINTER));
+    kill(PSTR(MSG_EXPECTED_PRINTER));
 
 }
 

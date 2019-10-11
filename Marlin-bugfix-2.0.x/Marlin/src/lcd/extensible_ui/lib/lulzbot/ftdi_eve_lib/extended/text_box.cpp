@@ -104,14 +104,11 @@ namespace FTDI {
           line[line_len - 1] = 0;
 
         #ifdef TOUCH_UI_USE_UTF8
-          if (has_utf8_chars(line)) {
-            draw_utf8_text(cmd, x + dx, y + dy, line, fm.fs, options & ~OPT_CENTERY);
-          } else
+          draw_utf8_text(cmd, x + dx, y + dy, line, fm.fs, options & ~OPT_CENTERY);
+        #else
+          cmd.CLCD::CommandFifo::text(x + dx, y + dy, font, options & ~OPT_CENTERY);
+          cmd.CLCD::CommandFifo::str(line);
         #endif
-          {
-            cmd.CLCD::CommandFifo::text(x + dx, y + dy, font, options & ~OPT_CENTERY);
-            cmd.CLCD::CommandFifo::str(line);
-          }
       }
       y += fm.get_height();
 

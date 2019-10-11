@@ -43,12 +43,14 @@ void GcodeSuite::M280() {
     }
     else {
       SERIAL_ECHO_START();
-      SERIAL_ECHOLNPAIR(" Servo ", servo_index, ": ", servo[servo_index].read());
+      SERIAL_ECHOPAIR(" Servo ", servo_index);
+      SERIAL_ECHOLNPAIR(": ", servo[servo_index].read());
     }
   }
   else {
     SERIAL_ERROR_START();
-    SERIAL_ECHOLNPAIR("Servo ", servo_index, " out of range");
+    SERIAL_ECHOPAIR("Servo ", servo_index);
+    SERIAL_ECHOLNPGM(" out of range");
   }
 }
 

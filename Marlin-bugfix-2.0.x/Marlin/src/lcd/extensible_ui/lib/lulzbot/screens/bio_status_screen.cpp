@@ -29,16 +29,14 @@
 #include "../ftdi_eve_lib/extras/poly_ui.h"
 #include "bio_printer_ui.h"
 
+#define E_TRAVEL_LIMIT 60
+
 #define GRID_COLS 2
 #define GRID_ROWS 9
 
 #define POLY(A) PolyUI::poly_reader_t(A, sizeof(A)/sizeof(A[0]))
 
 const uint8_t shadow_depth = 5;
-const float   max_speed  = 1.00;
-const float   min_speed  = 0.02;
-const float   emax_speed = 2.00;
-const float   emin_speed = 0.70;
 
 using namespace FTDI;
 using namespace Theme;
@@ -92,15 +90,13 @@ void StatusScreen::draw_temperature(draw_mode_t what) {
     cmd.font(font_xlarge)
        .cmd(COLOR_RGB(bg_text_enabled));
 
-    if (!isHeaterIdle(BED) && getTargetTemp_celsius(BED) > 0)
-      format_temp(bed_str, getTargetTemp_celsius(BED));
-    else
-      strcpy_P(bed_str, PSTR(MSG_BED));
+    if (!isHeaterIdle(BED) && getTargetTemp_celsius(BED) > 0) {
+      sprintf_P(bed_str, PSTR("%3d%S"), ROUND(getTargetTemp_celsius(BED)), GET_TEXT(UNITS_C));
+      ui.bounds(POLY(target_temp), x, y, h, v);
+      cmd.text(x, y, h, v, bed_str);
+    }
 
-    ui.bounds(POLY(target_temp), x, y, h, v);
-    cmd.text(x, y, h, v, bed_str);
-
-    format_temp(bed_str, getActualTemp_celsius(BED));
+    sprintf_P(bed_str, PSTR("%3d%S"), ROUND(getActualTemp_celsius(BED)), GET_TEXT(UNITS_C));
     ui.bounds(POLY(actual_temp), x, y, h, v);
     cmd.text(x, y, h, v, bed_str);
   }
@@ -108,11 +104,7 @@ void StatusScreen::draw_temperature(draw_mode_t what) {
 
 void StatusScreen::draw_syringe(draw_mode_t what) {
   int16_t x, y, h, v;
-  #ifdef LULZBOT_E_TRAVEL_LIMIT
-    const float fill_level = 1.0 - min(1.0, max(0.0, getAxisPosition_mm(E0) / LULZBOT_E_TRAVEL_LIMIT));
-  #else
-    const float fill_level = 0.75;
-  #endif
+  const float fill_level = 1.0 - min(1.0, max(0.0, getAxisPosition_mm(E0) / E_TRAVEL_LIMIT));
   const bool  e_homed = isAxisPositionKnown(E0);
 
   CommandProcessor cmd;
@@ -183,13 +175,13 @@ void StatusScreen::draw_fine_motion(draw_mode_t what) {
 
     ui.bounds(POLY(fine_label), x, y, h, v);
     cmd.cmd(COLOR_RGB(bg_text_enabled))
-       .text(x, y, h, v, GET_TEXT_F(FINE_MOTION));
+       .text(x, y, h, v, GET_TEXTF(FINE_MOTION));
   }
 
   if (what & FOREGROUND) {
     ui.bounds(POLY(fine_toggle), x, y, h, v);
     cmd.colors(ui_toggle)
-       .toggle2(x, y, h, v, GET_TEXT_F(NO), GET_TEXT_F(YES), fine_motion);
+       .toggle2(x, y, h, v, GET_TEXTF(NO), GET_TEXTF(YES), fine_motion);
   }
 }
 
@@ -222,11 +214,11 @@ void StatusScreen::draw_buttons(draw_mode_t) {
      .colors(has_media ? action_btn : normal_btn)
      .tag(9).button(BTN_POS(1,9), BTN_SIZE(1,1),
         isPrintingFromMedia() ?
-          GET_TEXT_F(PRINTING) :
-          GET_TEXT_F(MEDIA)
+          GET_TEXTF(PRINTING) :
+          GET_TEXTF(MEDIA)
       );
 
-  cmd.colors(!has_media ? action_btn : normal_btn).tag(10).button(BTN_POS(2,9), BTN_SIZE(1,1), GET_TEXT_F(MENU));
+  cmd.colors(!has_media ? action_btn : normal_btn).tag(10).button(BTN_POS(2,9), BTN_SIZE(1,1), GET_TEXTF(MENU));
 }
 
 void StatusScreen::loadBitmaps() {
@@ -243,9 +235,8 @@ void StatusScreen::loadBitmaps() {
 void StatusScreen::onRedraw(draw_mode_t what) {
   if (what & BACKGROUND) {
     CommandProcessor cmd;
-    cmd.cmd(CLEAR_COLOR_RGB(bg_color))
-       .cmd(CLEAR(true,true,true))
-       .tag(0);
+    cmd.cmd(CLEAR_COLOR_RGB(bg_color));
+    cmd.cmd(CLEAR(true,true,true));
   }
 
   draw_syringe(what);
@@ -257,30 +248,25 @@ void StatusScreen::onRedraw(draw_mode_t what) {
 }
 
 bool StatusScreen::onTouchStart(uint8_t) {
-  increment = 0;
+  increment = fine_motion ? 0.25 : 1;
   return true;
 }
 
 bool StatusScreen::onTouchEnd(uint8_t tag) {
   switch (tag) {
-    case  1:
-    case  2:
-    case  3:
-    case  4:
+    case 1:
+    case 2:
+    case 3:
+    case 4:
     case 12:
       if (!jog_xy) {
         jog_xy = true;
         injectCommands_P(PSTR("M17"));
       }
-      jog({ 0, 0, 0 });
       break;
-    case  5:
-    case  6:
-      jog({ 0, 0, 0 });
-      break;
-    case  9: GOTO_SCREEN(FilesScreen); break;
+    case 9:  GOTO_SCREEN(FilesScreen); break;
     case 10: GOTO_SCREEN(MainMenu); break;
-    case 13: GOTO_SCREEN(BioConfirmHomeE); break;
+    case 13: SpinnerDialogBox::enqueueAndWait_P(F("G112"));  break;
     case 14: SpinnerDialogBox::enqueueAndWait_P(F("G28 Z")); break;
     case 15: GOTO_SCREEN(TemperatureScreen);  break;
     case 16: fine_motion = !fine_motion; break;
@@ -294,28 +280,25 @@ bool StatusScreen::onTouchEnd(uint8_t tag) {
 
 bool StatusScreen::onTouchHeld(uint8_t tag) {
   if (tag >= 1 && tag <= 4 && !jog_xy) return false;
-  const float s = min_speed + (fine_motion ? 0 : (max_speed - min_speed) * sq(increment));
+  if (ExtUI::isMoving()) return false; // Don't allow moves to accumulate
+  #define UI_INCREMENT_AXIS(axis) MoveAxisScreen::setManualFeedrate(axis, increment); UI_INCREMENT(AxisPosition_mm, axis);
+  #define UI_DECREMENT_AXIS(axis) MoveAxisScreen::setManualFeedrate(axis, increment); UI_DECREMENT(AxisPosition_mm, axis);
   switch (tag) {
-    case 1: jog({-s,  0,  0}); break;
-    case 2: jog({ s,  0,  0}); break;
-    case 4: jog({ 0, -s,  0}); break; // NOTE: Y directions inverted because bed rather than needle moves
-    case 3: jog({ 0,  s,  0}); break;
-    case 5: jog({ 0,  0, -s}); break;
-    case 6: jog({ 0,  0,  s}); break;
-    case 7: case 8:
-    {
-      if (ExtUI::isMoving()) return false;
-      const feedRate_t feedrate = emin_speed + (fine_motion ? 0 : (emax_speed - emin_speed) * sq(increment));
-      const float increment = 0.25 * feedrate * (tag == 7 ? -1 : 1);
-      MoveAxisScreen::setManualFeedrate(E0, feedrate);
-      UI_INCREMENT(AxisPosition_mm, E0);
-      current_screen.onRefresh();
-      break;
-    }
-    default:
-      return false;
+    case 1: UI_DECREMENT_AXIS(X);  break;
+    case 2: UI_INCREMENT_AXIS(X);  break;
+    case 4: UI_DECREMENT_AXIS(Y);  break; // NOTE: Y directions inverted because bed rather than needle moves
+    case 3: UI_INCREMENT_AXIS(Y);  break;
+    case 5: UI_DECREMENT_AXIS(Z);  break;
+    case 6: UI_INCREMENT_AXIS(Z);  break;
+    case 7: UI_DECREMENT_AXIS(E0); break;
+    case 8: UI_INCREMENT_AXIS(E0); break;
+    default: return false;
   }
-  increment = min(1.0f, increment + 0.1f);
+  #undef UI_DECREMENT_AXIS
+  #undef UI_INCREMENT_AXIS
+  if (increment < 10 && !fine_motion)
+    increment += 0.5;
+  current_screen.onRefresh();
   return false;
 }
 
@@ -328,11 +311,11 @@ void StatusScreen::setStatusMessage(const char * const str) {
 }
 
 void StatusScreen::onIdle() {
+  if (isPrintingFromMedia())
+    BioPrintingDialogBox::show();
+
   if (refresh_timer.elapsed(STATUS_UPDATE_INTERVAL)) {
-    if (!EventLoop::is_touch_held())
-      onRefresh();
-    if (isPrintingFromMedia())
-      BioPrintingDialogBox::show();
+    onRefresh();
     refresh_timer.start();
   }
 }

@@ -36,9 +36,9 @@
 bool GcodeSuite::select_coordinate_system(const int8_t _new) {
   if (active_coordinate_system == _new) return false;
   active_coordinate_system = _new;
-  xyz_float_t new_offset{0};
+  float new_offset[XYZ] = { 0 };
   if (WITHIN(_new, 0, MAX_COORDINATE_SYSTEMS - 1))
-    new_offset = coordinate_system[_new];
+    COPY(new_offset, coordinate_system[_new]);
   LOOP_XYZ(i) {
     if (position_shift[i] != new_offset[i]) {
       position_shift[i] = new_offset[i];

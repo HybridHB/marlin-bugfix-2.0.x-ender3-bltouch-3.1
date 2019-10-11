@@ -24,9 +24,3 @@
 #include "platforms.h"
 
 #include HAL_PATH(.,HAL.h)
-
-inline void watchdog_refresh() {
-  #if ENABLED(USE_WATCHDOG)
-    HAL_watchdog_refresh();
-  #endif
-}

@@ -24,9 +24,10 @@
 
 #if ENABLED(MESH_BED_LEVELING)
 
-  #include "../bedlevel.h"
+  #include "mesh_bed_leveling.h"
 
   #include "../../../module/motion.h"
+  #include "../../../feature/bedlevel/bedlevel.h"
 
   #if ENABLED(EXTENSIBLE_UI)
     #include "../../../lcd/extensible_ui/ui_api.h"
@@ -63,63 +64,65 @@
      * Prepare a mesh-leveled linear move in a Cartesian setup,
      * splitting the move where it crosses mesh borders.
      */
-    void mesh_bed_leveling::line_to_destination(const feedRate_t &scaled_fr_mm_s, uint8_t x_splits, uint8_t y_splits) {
+    void mesh_bed_leveling::line_to_destination(const float fr_mm_s, uint8_t x_splits, uint8_t y_splits) {
       // Get current and destination cells for this line
-      xy_int8_t scel = cell_indexes(current_position), ecel = cell_indexes(destination);
-      NOMORE(scel.x, GRID_MAX_POINTS_X - 2);
-      NOMORE(scel.y, GRID_MAX_POINTS_Y - 2);
-      NOMORE(ecel.x, GRID_MAX_POINTS_X - 2);
-      NOMORE(ecel.y, GRID_MAX_POINTS_Y - 2);
+      int cx1 = cell_index_x(current_position[X_AXIS]),
+          cy1 = cell_index_y(current_position[Y_AXIS]),
+          cx2 = cell_index_x(destination[X_AXIS]),
+          cy2 = cell_index_y(destination[Y_AXIS]);
+      NOMORE(cx1, GRID_MAX_POINTS_X - 2);
+      NOMORE(cy1, GRID_MAX_POINTS_Y - 2);
+      NOMORE(cx2, GRID_MAX_POINTS_X - 2);
+      NOMORE(cy2, GRID_MAX_POINTS_Y - 2);
 
       // Start and end in the same cell? No split needed.
-      if (scel == ecel) {
-        line_to_destination(scaled_fr_mm_s);
-        current_position = destination;
+      if (cx1 == cx2 && cy1 == cy2) {
+        line_to_destination(fr_mm_s);
+        set_current_from_destination();
         return;
       }
 
-      #define MBL_SEGMENT_END(A) (current_position.A + (destination.A - current_position.A) * normalized_dist)
+      #define MBL_SEGMENT_END(A) (current_position[_AXIS(A)] + (destination[_AXIS(A)] - current_position[_AXIS(A)]) * normalized_dist)
 
-      float normalized_dist;
-      xyze_pos_t dest;
-      const int8_t gcx = _MAX(scel.x, ecel.x), gcy = _MAX(scel.y, ecel.y);
+      float normalized_dist, end[XYZE];
+      const int8_t gcx = _MAX(cx1, cx2), gcy = _MAX(cy1, cy2);
 
       // Crosses on the X and not already split on this X?
       // The x_splits flags are insurance against rounding errors.
-      if (ecel.x != scel.x && TEST(x_splits, gcx)) {
+      if (cx2 != cx1 && TEST(x_splits, gcx)) {
         // Split on the X grid line
         CBI(x_splits, gcx);
-        dest = destination;
-        destination.x = index_to_xpos[gcx];
-        normalized_dist = (destination.x - current_position.x) / (dest.x - current_position.x);
-        destination.y = MBL_SEGMENT_END(y);
+        COPY(end, destination);
+        destination[X_AXIS] = index_to_xpos[gcx];
+        normalized_dist = (destination[X_AXIS] - current_position[X_AXIS]) / (end[X_AXIS] - current_position[X_AXIS]);
+        destination[Y_AXIS] = MBL_SEGMENT_END(Y);
       }
       // Crosses on the Y and not already split on this Y?
-      else if (ecel.y != scel.y && TEST(y_splits, gcy)) {
+      else if (cy2 != cy1 && TEST(y_splits, gcy)) {
         // Split on the Y grid line
         CBI(y_splits, gcy);
-        dest = destination;
-        destination.y = index_to_ypos[gcy];
-        normalized_dist = (destination.y - current_position.y) / (dest.y - current_position.y);
-        destination.x = MBL_SEGMENT_END(x);
+        COPY(end, destination);
+        destination[Y_AXIS] = index_to_ypos[gcy];
+        normalized_dist = (destination[Y_AXIS] - current_position[Y_AXIS]) / (end[Y_AXIS] - current_position[Y_AXIS]);
+        destination[X_AXIS] = MBL_SEGMENT_END(X);
       }
       else {
         // Must already have been split on these border(s)
         // This should be a rare case.
-        line_to_destination(scaled_fr_mm_s);
-        current_position = destination;
+        line_to_destination(fr_mm_s);
+        set_current_from_destination();
         return;
       }
 
-      destination.z = MBL_SEGMENT_END(z);
-      destination.e = MBL_SEGMENT_END(e);
+      destination[Z_AXIS] = MBL_SEGMENT_END(Z);
+      destination[E_AXIS] = MBL_SEGMENT_END(E);
 
       // Do the split and look for more borders
-      line_to_destination(scaled_fr_mm_s, x_splits, y_splits);
+      line_to_destination(fr_mm_s, x_splits, y_splits);
 
       // Restore destination from stack
-      destination = dest;
-      line_to_destination(scaled_fr_mm_s, x_splits, y_splits);
+      COPY(destination, end);
+      line_to_destination(fr_mm_s, x_splits, y_splits);
     }
 
   #endif // IS_CARTESIAN && !SEGMENT_LEVELED_MOVES

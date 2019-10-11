@@ -21,9 +21,8 @@
  ****************************************************************************/
 
 #include "../config.h"
-#include "../language/language.h"
 
-#if ENABLED(LULZBOT_TOUCH_UI) && NUM_LANGUAGES > 1
+#if ENABLED(LULZBOT_TOUCH_UI) && defined(TOUCH_UI_LANGUAGE_MENU)
 
 #include "screens.h"
 
@@ -40,23 +39,14 @@ void LanguageMenu::onRedraw(draw_mode_t) {
   #define GRID_ROWS 8
   #define GRID_COLS 1
 
-  cmd.tag(1).button(BTN_POS(1,1), BTN_SIZE(1,1), GET_LANGUAGE_NAME(1));
-  cmd.tag(2).button(BTN_POS(1,2), BTN_SIZE(1,1), GET_LANGUAGE_NAME(2));
-  #if NUM_LANGUAGES > 2
-    cmd.tag(3).button(BTN_POS(1,3), BTN_SIZE(1,1), GET_LANGUAGE_NAME(3));
-    #if NUM_LANGUAGES > 3
-      cmd.tag(4).button(BTN_POS(1,4), BTN_SIZE(1,1), GET_LANGUAGE_NAME(4));
-      #if NUM_LANGUAGES > 5
-        cmd.tag(5).button(BTN_POS(1,5), BTN_SIZE(1,1), GET_LANGUAGE_NAME(5));
-      #endif
-    #endif
-  #endif
+  for (uint8_t i = 0; i < get_language_count(); i++)
+    cmd.tag(1 + i).button(BTN_POS(1,i + 1), BTN_SIZE(1,1), get_text(i, String_Indices::LANGUAGE));
 }
 
 bool LanguageMenu::onTouchEnd(uint8_t tag) {
-
-  if (tag > 0 && tag <= NUM_LANGUAGES) {
-    lang = tag - 1;
+  const uint8_t lang = tag - 1;
+  if (tag != 0) {
+    set_language(lang);
     GOTO_SCREEN(StatusScreen);
     return true;
   }

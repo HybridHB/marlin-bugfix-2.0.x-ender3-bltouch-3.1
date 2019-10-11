@@ -45,17 +45,8 @@
 #define DEBUG_OUT ENABLED(DEBUG_LEVELING_FEATURE)
 #include "../../core/debug_out.h"
 
-// Sanity-check
-constexpr xy_pos_t sanity_arr_z_align[] = Z_STEPPER_ALIGN_XY;
-static_assert(COUNT(sanity_arr_z_align) == Z_STEPPER_COUNT,
-  #if ENABLED(Z_TRIPLE_STEPPER_DRIVERS)
-    "Z_STEPPER_ALIGN_XY requires three {X,Y} entries (Z, Z2, and Z3)."
-  #else
-    "Z_STEPPER_ALIGN_XY requires two {X,Y} entries (Z and Z2)."
-  #endif
-);
-
-xy_pos_t z_auto_align_pos[Z_STEPPER_COUNT] = Z_STEPPER_ALIGN_XY;
+float z_auto_align_xpos[Z_STEPPER_COUNT] = Z_STEPPER_ALIGN_X,
+      z_auto_align_ypos[Z_STEPPER_COUNT] = Z_STEPPER_ALIGN_Y;
 
 inline void set_all_z_lock(const bool lock) {
   stepper.set_z_lock(lock);
@@ -132,11 +123,11 @@ void GcodeSuite::G34() {
 
     float z_probe = Z_BASIC_CLEARANCE + (G34_MAX_GRADE) * 0.01f * (
       #if ENABLED(Z_TRIPLE_STEPPER_DRIVERS)
-         SQRT(_MAX(HYPOT2(z_auto_align_pos[0].x - z_auto_align_pos[0].y, z_auto_align_pos[1].x - z_auto_align_pos[1].y),
-                  HYPOT2(z_auto_align_pos[1].x - z_auto_align_pos[1].y, z_auto_align_pos[2].x - z_auto_align_pos[2].y),
-                  HYPOT2(z_auto_align_pos[2].x - z_auto_align_pos[2].y, z_auto_align_pos[0].x - z_auto_align_pos[0].y)))
+         SQRT(_MAX(HYPOT2(z_auto_align_xpos[0] - z_auto_align_ypos[0], z_auto_align_xpos[1] - z_auto_align_ypos[1]),
+                  HYPOT2(z_auto_align_xpos[1] - z_auto_align_ypos[1], z_auto_align_xpos[2] - z_auto_align_ypos[2]),
+                  HYPOT2(z_auto_align_xpos[2] - z_auto_align_ypos[2], z_auto_align_xpos[0] - z_auto_align_ypos[0])))
       #else
-         HYPOT(z_auto_align_pos[0].x - z_auto_align_pos[0].y, z_auto_align_pos[1].x - z_auto_align_pos[1].y)
+         HYPOT(z_auto_align_xpos[0] - z_auto_align_ypos[0], z_auto_align_xpos[1] - z_auto_align_ypos[1])
       #endif
     );
 
@@ -144,7 +135,7 @@ void GcodeSuite::G34() {
     if (!all_axes_known()) home_all_axes();
 
     // Move the Z coordinate realm towards the positive - dirty trick
-    current_position.z -= z_probe * 0.5f;
+    current_position[Z_AXIS] -= z_probe * 0.5;
 
     float last_z_align_move[Z_STEPPER_COUNT] = ARRAY_N(Z_STEPPER_COUNT, 10000.0f, 10000.0f, 10000.0f),
           z_measured[Z_STEPPER_COUNT] = { 0 },
@@ -171,7 +162,7 @@ void GcodeSuite::G34() {
         if (iteration == 0 || izstepper > 0) do_blocking_move_to_z(z_probe);
 
         // Probe a Z height for each stepper.
-        const float z_probed_height = probe_at_point(z_auto_align_pos[zstepper], raise_after, 0, true);
+        const float z_probed_height = probe_at_point(z_auto_align_xpos[zstepper], z_auto_align_ypos[zstepper], raise_after, 0, true);
         if (isnan(z_probed_height)) {
           SERIAL_ECHOLNPGM("Probing failed.");
           err_break = true;
@@ -249,7 +240,7 @@ void GcodeSuite::G34() {
         }
 
         // Do a move to correct part of the misalignment for the current stepper
-        do_blocking_move_to_z(amplification * z_align_move + current_position.z);
+        do_blocking_move_to_z(amplification * z_align_move + current_position[Z_AXIS]);
       } // for (zstepper)
 
       // Back to normal stepper operations
@@ -286,7 +277,7 @@ void GcodeSuite::G34() {
     // After this operation the z position needs correction
     set_axis_is_not_at_home(Z_AXIS);
 
-    // Stow the probe, as the last call to probe_at_point(...) left
+    // Stow the probe, as the last call to probe_pt(...) left
     // the probe deployed if it was successful.
     STOW_PROBE();
 
@@ -308,22 +299,20 @@ void GcodeSuite::M422() {
     return;
   }
 
-  const xy_pos_t pos = {
-    parser.floatval('X', z_auto_align_pos[zstepper].x),
-    parser.floatval('Y', z_auto_align_pos[zstepper].y)
-  };
-
-  if (!WITHIN(pos.x, X_MIN_POS, X_MAX_POS)) {
+  const float x_pos = parser.floatval('X', z_auto_align_xpos[zstepper]);
+  if (!WITHIN(x_pos, X_MIN_POS, X_MAX_POS)) {
     SERIAL_ECHOLNPGM("?(X) out of bounds.");
     return;
   }
 
-  if (!WITHIN(pos.y, Y_MIN_POS, Y_MAX_POS)) {
+  const float y_pos = parser.floatval('Y', z_auto_align_ypos[zstepper]);
+  if (!WITHIN(y_pos, Y_MIN_POS, Y_MAX_POS)) {
     SERIAL_ECHOLNPGM("?(Y) out of bounds.");
     return;
   }
 
-  z_auto_align_pos[zstepper] = pos;
+  z_auto_align_xpos[zstepper] = x_pos;
+  z_auto_align_ypos[zstepper] = y_pos;
 }
 
 #endif // Z_STEPPER_AUTO_ALIGN

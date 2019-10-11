@@ -34,12 +34,12 @@ TWIBus::TWIBus() {
   #else
     Wire.begin(I2C_SLAVE_ADDRESS); // Join the bus as a slave
   #endif
-  reset();
+  this->reset();
 }
 
 void TWIBus::reset() {
-  buffer_s = 0;
-  buffer[0] = 0x00;
+  this->buffer_s = 0;
+  this->buffer[0] = 0x00;
 }
 
 void TWIBus::address(const uint8_t adr) {
@@ -47,7 +47,7 @@ void TWIBus::address(const uint8_t adr) {
     SERIAL_ECHO_MSG("Bad I2C address (8-127)");
   }
 
-  addr = adr;
+  this->addr = adr;
 
   #if ENABLED(DEBUG_TWIBUS)
     debug(PSTR("address"), adr);
@@ -55,8 +55,8 @@ void TWIBus::address(const uint8_t adr) {
 }
 
 void TWIBus::addbyte(const char c) {
-  if (buffer_s >= COUNT(buffer)) return;
-  buffer[buffer_s++] = c;
+  if (this->buffer_s >= COUNT(this->buffer)) return;
+  this->buffer[this->buffer_s++] = c;
   #if ENABLED(DEBUG_TWIBUS)
     debug(PSTR("addbyte"), c);
   #endif
@@ -66,26 +66,26 @@ void TWIBus::addbytes(char src[], uint8_t bytes) {
   #if ENABLED(DEBUG_TWIBUS)
     debug(PSTR("addbytes"), bytes);
   #endif
-  while (bytes--) addbyte(*src++);
+  while (bytes--) this->addbyte(*src++);
 }
 
 void TWIBus::addstring(char str[]) {
   #if ENABLED(DEBUG_TWIBUS)
     debug(PSTR("addstring"), str);
   #endif
-  while (char c = *str++) addbyte(c);
+  while (char c = *str++) this->addbyte(c);
 }
 
 void TWIBus::send() {
   #if ENABLED(DEBUG_TWIBUS)
-    debug(PSTR("send"), addr);
+    debug(PSTR("send"), this->addr);
   #endif
 
-  Wire.beginTransmission(I2C_ADDRESS(addr));
-  Wire.write(buffer, buffer_s);
+  Wire.beginTransmission(I2C_ADDRESS(this->addr));
+  Wire.write(this->buffer, this->buffer_s);
   Wire.endTransmission();
 
-  reset();
+  this->reset();
 }
 
 // static
@@ -103,22 +103,22 @@ void TWIBus::echodata(uint8_t bytes, const char prefix[], uint8_t adr) {
 }
 
 void TWIBus::echobuffer(const char prefix[], uint8_t adr) {
-  echoprefix(buffer_s, prefix, adr);
-  for (uint8_t i = 0; i < buffer_s; i++) SERIAL_CHAR(buffer[i]);
+  echoprefix(this->buffer_s, prefix, adr);
+  for (uint8_t i = 0; i < this->buffer_s; i++) SERIAL_CHAR(this->buffer[i]);
   SERIAL_EOL();
 }
 
 bool TWIBus::request(const uint8_t bytes) {
-  if (!addr) return false;
+  if (!this->addr) return false;
 
   #if ENABLED(DEBUG_TWIBUS)
     debug(PSTR("request"), bytes);
   #endif
 
   // requestFrom() is a blocking function
-  if (Wire.requestFrom(addr, bytes) == 0) {
+  if (Wire.requestFrom(this->addr, bytes) == 0) {
     #if ENABLED(DEBUG_TWIBUS)
-      debug("request fail", addr);
+      debug("request fail", this->addr);
     #endif
     return false;
   }
@@ -131,12 +131,12 @@ void TWIBus::relay(const uint8_t bytes) {
     debug(PSTR("relay"), bytes);
   #endif
 
-  if (request(bytes))
-    echodata(bytes, PSTR("i2c-reply"), addr);
+  if (this->request(bytes))
+    echodata(bytes, PSTR("i2c-reply"), this->addr);
 }
 
 uint8_t TWIBus::capture(char *dst, const uint8_t bytes) {
-  reset();
+  this->reset();
   uint8_t count = 0;
   while (count < bytes && Wire.available())
     dst[count++] = Wire.read();
@@ -168,13 +168,13 @@ void TWIBus::flush() {
     #endif
 
     if (str) {
-      reset();
-      addstring(str);
+      this->reset();
+      this->addstring(str);
     }
 
-    Wire.write(buffer, buffer_s);
+    Wire.write(this->buffer, this->buffer_s);
 
-    reset();
+    this->reset();
   }
 
 #endif
